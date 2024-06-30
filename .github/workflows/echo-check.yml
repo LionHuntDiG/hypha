@@ -1,31 +1,69 @@
-name: CI
+name: CI/CD Pipeline
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push events for any branch
   push:
-
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+    outputs:
+      timestamp: ${{ steps.date.outputs.datetime }}
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v4
+      - name: Build the application
+        run: echo "Building Application"
+      - name: Set current date
+        id: date
+        run: echo "::set-output name=datetime::$(date +'%Y-%m-%dT%H:%M:%SZ')"
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: echo "Running Tests"
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
+  docker:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and Push Docker Image
         run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+          echo "Building Docker Image"
+          echo "Pushing to Registry"
+
+  deploy_dev:
+    needs: docker
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+      url: http://dev.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Dev Environment
+        run: echo "Deploying to Dev"
+
+  deploy_stg:
+    needs: deploy_dev
+    runs-on: ubuntu-latest
+    environment:
+      name: stg
+      url: http://stg.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Staging Environment
+        run: echo "Deploying to Staging"
+
+  deploy_prd:
+    needs: deploy_stg
+    runs-on: ubuntu-latest
+    environment:
+      name: prd
+      url: http://prod.example.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy to Production Environment
+        run: echo "Deploying to Production"
